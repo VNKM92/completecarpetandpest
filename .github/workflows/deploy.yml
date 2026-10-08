@@ -1,53 +1,77 @@
-name: CI/CD Pipeline - Deploy to Hostinger
+name: Continuous Deployment (CD Pipeline)
 
 on:
   push:
     branches:
       - main
-      - master
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Deployment Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
 
 jobs:
-  build-and-test:
-    name: Build & Verify Project
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Test Build Next.js Application
-        run: npm run build
+  verify:
+    name: 🛡️ Pre-Deployment Verification
+    uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Deploy to Hostinger Server
-    needs: build-and-test
+    name: 🚀 Zero-Downtime Deploy to Production Server
+    needs: verify
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Execute Remote Deployment Commands via SSH
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Execute Zero-Downtime Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          username: ${{ secrets.HOSTINGER_USER }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_PORT || 22 }}
+          host: ${{ secrets.SERVER_HOST || secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.SERVER_USER || secrets.HOSTINGER_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.HOSTINGER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.HOSTINGER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
           script_stop: true
+          envs: GITHUB_SHA,GITHUB_REF
           script: |
-            cd /var/www/carpet
-            chmod +x scripts/deploy.sh
+            echo "=========================================================="
+            echo "🚀 Starting Automated Production Deployment: $(date)"
+            echo "Commit: $GITHUB_SHA"
+            echo "=========================================================="
+            
+            APP_DIR="/var/www/carpet"
+            if [ ! -d "$APP_DIR" ]; then
+              echo "❌ Error: Application directory $APP_DIR does not exist."
+              exit 1
+            fi
+            
+            cd "$APP_DIR"
+            
+            # Make all deployment scripts executable
+            chmod +x scripts/*.sh || true
+            
+            # Run automated deployment workflow
             bash scripts/deploy.sh
+            
+            # Run post-deployment health check
+            bash scripts/health-check.sh
+
+      - name: 📢 Deployment Status Notification
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment succeeded for commit ${{ github.sha }}!"
+          else
+            echo "❌ Deployment failed for commit ${{ github.sha }}. Check server logs."
+          fi

@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
-# Automated Hostinger VPS Initial Server Setup Script
-# For Next.js + Prisma + PM2 + Nginx
+# Automated VPS Initial Server Setup Script
+# For Next.js (Frontend) + Laravel (Backend) + PM2 + Nginx + PHP 8.4
 # =============================================================================
 set -e
 
@@ -11,42 +11,49 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "=========================================================="
-echo "  Starting Hostinger VPS Server Setup for Carpet App      "
+echo "  Starting Server Setup (Next.js + Laravel + Nginx + PM2) "
 echo "=========================================================="
 
 # 1. Update and Upgrade System
-echo "[1/7] Updating system packages..."
+echo "[1/8] Updating system packages..."
 apt-get update -y && apt-get upgrade -y
-apt-get install -y curl wget git unzip build-essential ufw ufw-doc
+apt-get install -y curl wget git unzip build-essential ufw ufw-doc software-properties-common
 
-# 2. Install Node.js 20.x (LTS)
-echo "[2/7] Installing Node.js 20.x LTS..."
+# 2. Install PHP 8.4 and required extensions
+echo "[2/8] Installing PHP 8.4 and extensions..."
+add-apt-repository -y ppa:ondrej/php
+apt-get update -y
+apt-get install -y php8.4 php8.4-cli php8.4-fpm php8.4-mbstring php8.4-xml php8.4-curl php8.4-sqlite3 php8.4-mysql php8.4-zip php8.4-bcmath php8.4-intl
+
+# 3. Install Composer
+echo "[3/8] Installing Composer..."
+curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# 4. Install Node.js 20.x (LTS) & PM2
+echo "[4/8] Installing Node.js 20.x & PM2..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
-
-# 3. Install PM2 Globally
-echo "[3/7] Installing PM2 process manager..."
 npm install -g pm2
 pm2 startup systemd -u root --hp /root
 
-# 4. Install Nginx & Certbot (SSL)
-echo "[4/7] Installing Nginx & Certbot..."
+# 5. Install Nginx & Certbot (SSL)
+echo "[5/8] Installing Nginx & Certbot..."
 apt-get install -y nginx certbot python3-certbot-nginx
 
-# 5. Configure Firewall (UFW)
-echo "[5/7] Configuring UFW Firewall..."
+# 6. Configure Firewall (UFW)
+echo "[6/8] Configuring UFW Firewall..."
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
 ufw --force enable
 
-# 6. Create Application Directory & Set Permissions
-echo "[6/7] Creating application directory at /var/www/carpet..."
+# 7. Create Application Directory & Set Permissions
+echo "[7/8] Creating application directory at /var/www/carpet..."
 mkdir -p /var/www/carpet
 mkdir -p /var/www/carpet/logs
 chown -R $SUDO_USER:$SUDO_USER /var/www/carpet || true
 
-# 7. Configure Nginx Reverse Proxy
-echo "[7/7] Setting up Nginx configuration..."
+# 8. Configure Nginx Reverse Proxy
+echo "[8/8] Setting up Nginx configuration..."
 cat << 'EOF' > /etc/nginx/sites-available/carpet
 server {
     listen 80;
@@ -55,7 +62,6 @@ server {
 
     client_max_body_size 50M;
 
-    # Gzip Compression
     gzip on;
     gzip_proxied any;
     gzip_comp_level 6;
@@ -69,6 +75,13 @@ server {
 
     location /public/ {
         alias /var/www/carpet/public/;
+        expires 30d;
+        access_log off;
+    }
+
+    # Laravel storage assets
+    location /storage/ {
+        alias /var/www/carpet/backend/storage/app/public/;
         expires 30d;
         access_log off;
     }
@@ -90,7 +103,6 @@ server {
 }
 EOF
 
-# Enable Nginx Site
 ln -sf /etc/nginx/sites-available/carpet /etc/nginx/sites-enabled/carpet
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
@@ -99,9 +111,8 @@ systemctl restart nginx
 echo "=========================================================="
 echo " Server Setup Completed Successfully!"
 echo " Next Steps:"
-echo " 1. Clone repository into /var/www/carpet:"
-echo "    git clone <your-repo-url> /var/www/carpet"
-echo " 2. Add your .env file inside /var/www/carpet/.env"
+echo " 1. Clone repository into /var/www/carpet"
+echo " 2. Add .env files in /var/www/carpet/.env and /var/www/carpet/backend/.env"
 echo " 3. Run: bash /var/www/carpet/scripts/deploy.sh"
 echo " 4. To bind domain & SSL, run:"
 echo "    certbot --nginx -d yourdomain.com -d www.yourdomain.com"

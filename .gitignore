@@ -1,41 +1,60 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp/
 .pnp.*
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+backend/vendor/
 
-# testing
-/coverage
+# Next.js build
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
+# Production & Environment Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/.env.backup
+backend/.env.production
 *.pem
+*.key
+backend/storage/*.key
 
-# debug
+# Database
+*.sqlite
+*.sqlite-journal
+backend/database/*.sqlite
+backend/database/*.sqlite-journal
+prisma/dev.db
+prisma/dev.db-journal
+
+# Logs & Cache
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+logs/
+backend/storage/logs/*.log
+backend/bootstrap/cache/*.php
 
-# env files (can opt-in for committing if needed)
-.env*
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.fleet/
+.zed/
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Exceptions to ignore
+!.env.example
+!backend/.env.example

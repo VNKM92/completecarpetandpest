@@ -1,0 +1,15 @@
+vendor
+node_modules
+.env
+.env*.local
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+database/*.sqlite
+database/*.sqlite-journal
+.git
+.github
+tests
+.phpunit.cache
+*.log

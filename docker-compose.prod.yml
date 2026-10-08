@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carpet-prod-frontend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - LARAVEL_API_URL=http://backend:8000
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    depends_on:
+      - backend
+    networks:
+      - carpet-prod-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: carpet-prod-backend
+    restart: always
+    environment:
+      - APP_NAME="Brisbane Carpet & Pest API"
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=sqlite
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    volumes:
+      - prod-backend-storage:/var/www/html/storage
+      - prod-backend-db:/var/www/html/database
+    networks:
+      - carpet-prod-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: carpet-prod-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - carpet-prod-network
+
+volumes:
+  prod-backend-storage:
+  prod-backend-db:
+
+networks:
+  carpet-prod-network:
+    driver: bridge

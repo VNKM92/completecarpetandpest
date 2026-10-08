@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+*.log
+backend
+.env
+.env*.local
+dev.db
+database.sqlite
+backups
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

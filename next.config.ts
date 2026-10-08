@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const LARAVEL_API_URL = process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_LARAVEL_URL || "http://127.0.0.1:8000";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -9,6 +11,18 @@ const nextConfig: NextConfig = {
   images: {
     domains: ['localhost', '127.0.0.1'],
     formats: ['image/avif', 'image/webp'],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${LARAVEL_API_URL}/api/:path*`,
+      },
+      {
+        source: '/storage/:path*',
+        destination: `${LARAVEL_API_URL}/storage/:path*`,
+      },
+    ];
   },
   async headers() {
     return [

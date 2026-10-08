@@ -1,0 +1,130 @@
+name: Continuous Integration (CI Pipeline)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-ci:
+    name: 🌐 Next.js Frontend Build & Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Frontend Dependencies
+        run: npm ci || npm install
+
+      - name: 🔍 TypeScript Type Check
+        run: npx tsc --noEmit
+
+      - name: 🏗️ Test Production Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+          LARAVEL_API_URL: "http://127.0.0.1:8000"
+
+  backend-ci:
+    name: 🐘 Laravel Backend Test & Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, json, bcmath, curl, sqlite3, pdo_sqlite, zip, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: 📦 Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        working-directory: backend
+
+      - name: ⚡ Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: 🔍 Validate composer.json
+        run: composer validate --strict
+        working-directory: backend
+
+      - name: 📦 Install Laravel Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        working-directory: backend
+
+      - name: 🛡️ Setup Environment & Database
+        run: |
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate
+        working-directory: backend
+
+      - name: 🗄️ Run Database Migrations & Seeders
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --force
+        working-directory: backend
+
+      - name: 🧪 Verify Route & Configuration Caching
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan route:list
+        working-directory: backend
+
+      - name: 🧪 Execute PHPUnit Tests
+        run: php artisan test --colors=always
+        working-directory: backend
+
+  security-audit:
+    name: 🔒 Security & Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+
+      - name: 🔍 Frontend Security Audit
+        run: npm audit --audit-level=moderate || true
+
+      - name: 🔍 Backend Composer Security Audit
+        run: composer audit || true
+        working-directory: backend
