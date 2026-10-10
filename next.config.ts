@@ -8,9 +8,20 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   images: {
-    domains: ['localhost', '127.0.0.1'],
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'http', hostname: '127.0.0.1' },
+      { protocol: 'https', hostname: 'brisbanecarpetpestexperts.com.au' },
+      { protocol: 'https', hostname: 'www.brisbanecarpetpestexperts.com.au' },
+      { protocol: 'https', hostname: 'api.brisbanecarpetpestexperts.com.au' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+    ],
   },
   async rewrites() {
     return [

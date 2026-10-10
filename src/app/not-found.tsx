@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Home, Phone } from "lucide-react";
 
-export default function RootNotFound() {
+export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#fffdf8] px-4 py-16">
       <div className="text-center max-w-lg mx-auto">

@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,7 @@ model User {
   email         String         @unique
   passwordHash  String
   phone         String?
-  avatar        String?
+  avatar        String?        @db.Text
   status        String         @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
   roleId        String?
   role          Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
@@ -35,7 +35,7 @@ model Role {
   id          String           @id @default(cuid())
   name        String           @unique
   slug        String           @unique
-  description String?
+  description String?          @db.Text
   isSystem    Boolean          @default(false)
   users       User[]
   permissions RolePermission[]
@@ -48,7 +48,7 @@ model Permission {
   name        String
   slug        String           @unique // e.g. "services:create", "enquiries:manage"
   category    String // e.g. "Services", "Bookings", "Settings"
-  description String?
+  description String?          @db.Text
   roles       RolePermission[]
   createdAt   DateTime         @default(now())
 }
@@ -74,10 +74,10 @@ model Customer {
   name         String
   email        String               @unique
   phone        String?
-  address      String?
+  address      String?              @db.Text
   suburb       String?
   postcode     String?
-  notes        String?
+  notes        String?              @db.Text
   bookings     Booking[]
   orders       Order[]
   invoices     Invoice[]
@@ -96,10 +96,10 @@ model Enquiry {
   service       String?
   bedrooms      String?
   bathrooms     String?
-  message       String?
+  message       String?  @db.Text
   status        String   @default("NEW") // NEW, CONTACTED, QUOTED, CLOSED, SPAM
   isRead        Boolean  @default(false)
-  notes         String?
+  notes         String?  @db.Text
   ipAddress     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -115,7 +115,7 @@ model Booking {
   customerPhone      String
   serviceId          String?
   serviceName        String
-  serviceAddress     String
+  serviceAddress     String               @db.Text
   suburb             String?
   postcode           String?
   scheduledDate      DateTime?
@@ -123,7 +123,7 @@ model Booking {
   squareFootage      Int?
   rooms              Int?
   bathrooms          Int?
-  addons             String?              // JSON string array of addons
+  addons             String?              @db.Text // JSON string array of addons
   totalPrice         Float                @default(0)
   approvedPrice      Float?
   depositRequired    Float                @default(50.0) // Standard 50 AUD deposit
@@ -133,9 +133,9 @@ model Booking {
   status             String               @default("PENDING") // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
   paymentStatus      String               @default("UNPAID") // UNPAID, DEPOSIT_PAID, FULLY_PAID, REFUNDED
   paymentGateway     String?              // STRIPE, PAYPAL, POLI, PAYID, AFTERPAY, BANK_TRANSFER, CASH
-  notes              String?
-  adminNotes         String?
-  rejectionReason    String?
+  notes              String?              @db.Text
+  adminNotes         String?              @db.Text
+  rejectionReason    String?              @db.Text
   reminderSent2Days  Boolean              @default(false)
   reminderSentDate   DateTime?
   reminderMobileOpt  Boolean              @default(true)
@@ -161,7 +161,7 @@ model BookingCrewMember {
   role        String    @default("Technician") // "Lead Specialist", "Steam Cleaning Specialist", "Pest Controller", "Bond Cleaner", "Quality Inspector", "Assistant"
   isLead      Boolean   @default(false)
   assignedAt  DateTime  @default(now())
-  notes       String?
+  notes       String?   @db.Text
 
   @@unique([bookingId, employeeId])
 }
@@ -180,7 +180,7 @@ model Order {
   paymentStatus String    @default("UNPAID") // UNPAID, PARTIAL, PAID, REFUNDED
   paymentMethod String?   // INVOICE, CARD, CASH, BANK_TRANSFER
   paymentDate   DateTime?
-  notes         String?
+  notes         String?   @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -199,7 +199,7 @@ model Invoice {
   customerName    String
   customerEmail   String
   customerPhone   String?
-  customerAddress String?
+  customerAddress String?              @db.Text
   subtotal        Float                @default(0)
   gstRate         Float                @default(10.0) // 10% Australia GST
   gstAmount       Float                @default(0)
@@ -211,8 +211,8 @@ model Invoice {
   paymentMethod   String?              // STRIPE, PAYPAL, POLI, PAYID, AFTERPAY, BANK_TRANSFER, CASH
   issuedDate      DateTime             @default(now())
   dueDate         DateTime?
-  notes           String?
-  terms           String?              @default("Payment due upon receipt. ABN: 45 892 103 441. Brisbane Carpet & Pest Experts.")
+  notes           String?              @db.Text
+  terms           String?              @default("Payment due upon receipt. ABN: 45 892 103 441. Brisbane Carpet & Pest Experts.") @db.Text
   items           InvoiceItem[]
   payments        PaymentTransaction[]
   createdAt       DateTime             @default(now())
@@ -223,7 +223,7 @@ model InvoiceItem {
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description String
+  description String   @db.Text
   quantity    Int      @default(1)
   unitPrice   Float    @default(0)
   totalPrice  Float    @default(0)
@@ -245,8 +245,8 @@ model PaymentTransaction {
   status            String    @default("SUCCESS") // SUCCESS, PENDING, FAILED, REFUNDED
   gatewayRef        String?   // Stripe Charge ID, PayPal Order ID, Bank Ref
   payerEmail        String?
-  notes             String?
-  metadata          String?   // JSON details
+  notes             String?   @db.Text
+  metadata          String?   @db.LongText // JSON details
   createdAt         DateTime  @default(now())
 }
 
@@ -266,9 +266,9 @@ model Employee {
   department       String              @default("Cleaning & Pest Control") // Carpet, Pest, Bond, Inspection, Operations
   status           String              @default("ACTIVE") // ACTIVE, ON_LEAVE, INACTIVE
   hourlyRate       Float               @default(35.0)
-  skills           String?             // JSON array of certified skills e.g. ["Steam Carpet", "Pest Management", "Tile Cleaning"]
-  emergencyContact String?
-  address          String?
+  skills           String?             @db.Text // JSON array of certified skills e.g. ["Steam Carpet", "Pest Management", "Tile Cleaning"]
+  emergencyContact String?             @db.Text
+  address          String?             @db.Text
   licenseNumber    String?             // QLD Pest Management License or White Card
   joinDate         DateTime            @default(now())
   assignedBookings Booking[]           @relation("PrimaryTechnician")
@@ -287,7 +287,7 @@ model Attendance {
   checkIn     DateTime?
   checkOut    DateTime?
   status      String    @default("PRESENT") // PRESENT, ABSENT, LEAVE, HALF_DAY
-  workNotes   String?
+  workNotes   String?   @db.Text
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -303,12 +303,12 @@ model JobReport {
   visitTime         DateTime?
   completionTime    DateTime?
   status            String     @default("SCHEDULED") // SCHEDULED, ARRIVED, IN_PROGRESS, COMPLETED, ISSUE_REPORTED
-  workDescription   String?
-  faultNotes        String?    // Description of pre-existing faults/stains/infestations noticed on arrival
-  treatmentApplied  String?    // E.g. "High heat extraction + Termiticide barrier spray"
-  checklist         String?    // JSON array of completed inspection checks
-  customerSignature String?    // Base64 or URL
-  summaryNotes      String?
+  workDescription   String?    @db.Text
+  faultNotes        String?    @db.Text // Description of pre-existing faults/stains/infestations noticed on arrival
+  treatmentApplied  String?    @db.Text // E.g. "High heat extraction + Termiticide barrier spray"
+  checklist         String?    @db.Text // JSON array of completed inspection checks
+  customerSignature String?    @db.LongText // Base64 or URL
+  summaryNotes      String?    @db.Text
   photos            JobPhoto[]
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
@@ -318,9 +318,9 @@ model JobPhoto {
   id          String    @id @default(cuid())
   jobReportId String
   jobReport   JobReport @relation(fields: [jobReportId], references: [id], onDelete: Cascade)
-  photoUrl    String
+  photoUrl    String    @db.Text
   type        String    @default("BEFORE") // BEFORE, DURING, AFTER, FAULT_EVIDENCE
-  caption     String?
+  caption     String?   @db.Text
   uploadedBy  String?   // Name or Employee Code
   createdAt   DateTime  @default(now())
 }
@@ -339,7 +339,7 @@ model ReminderLog {
   scheduledFor   DateTime
   sentAt         DateTime?
   status         String    @default("SENT") // PENDING, SENT, FAILED
-  error          String?
+  error          String?   @db.Text
   createdAt      DateTime  @default(now())
 }
 
@@ -349,9 +349,9 @@ model Notification {
   user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   roleTarget String?   // "CUSTOMER", "EMPLOYEE", "ADMIN", "ALL"
   title      String
-  message    String
+  message    String    @db.Text
   type       String    @default("INFO") // INFO, SUCCESS, WARNING, ERROR, QUOTE, PAYMENT, REMINDER
-  link       String?
+  link       String?   @db.Text
   isRead     Boolean   @default(false)
   readAt     DateTime?
   createdAt  DateTime  @default(now())
@@ -365,8 +365,8 @@ model ServiceCategory {
   id          String    @id @default(cuid())
   name        String
   slug        String    @unique
-  description String?
-  icon        String?
+  description String?   @db.Text
+  icon        String?   @db.Text
   order       Int       @default(0)
   services    Service[]
   createdAt   DateTime  @default(now())
@@ -379,21 +379,21 @@ model Service {
   slug           String           @unique
   categoryId     String?
   category       ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  shortDesc      String?
-  description    String?
+  shortDesc      String?          @db.Text
+  description    String?          @db.LongText
   priceStarting  Float?
   priceUnit      String?          @default("Fixed") // Hourly, Sqm, Room, Fixed
   duration       String?          // e.g. "2-3 hours"
-  icon           String?
-  heroImage      String?
-  gallery        String?          // JSON string array of image URLs
-  features       String?          // JSON string array of bullet points
-  tabData        String?          // JSON string for tabs (residential, commercial, outdoor)
-  metaTitle      String?
-  metaDesc       String?
-  metaKeywords   String?
-  canonicalUrl   String?
-  ogImage        String?
+  icon           String?          @db.Text
+  heroImage      String?          @db.Text
+  gallery        String?          @db.LongText // JSON string array of image URLs
+  features       String?          @db.LongText // JSON string array of bullet points
+  tabData        String?          @db.LongText // JSON string for tabs (residential, commercial, outdoor)
+  metaTitle      String?          @db.Text
+  metaDesc       String?          @db.Text
+  metaKeywords   String?          @db.Text
+  canonicalUrl   String?          @db.Text
+  ogImage        String?          @db.Text
   schemaType     String?          @default("CleaningService")
   isFeatured     Boolean          @default(false)
   isActive       Boolean          @default(true)
@@ -406,17 +406,17 @@ model Page {
   id           String   @id @default(cuid())
   title        String
   slug         String   @unique
-  heading      String?
-  subheading   String?
-  content      String?  // HTML or Markdown
-  bannerImage  String?
-  metaTitle    String?
-  metaDesc     String?
-  metaKeywords String?
-  canonicalUrl String?
-  ogImage      String?
+  heading      String?  @db.Text
+  subheading   String?  @db.Text
+  content      String?  @db.LongText // HTML or Markdown
+  bannerImage  String?  @db.Text
+  metaTitle    String?  @db.Text
+  metaDesc     String?  @db.Text
+  metaKeywords String?  @db.Text
+  canonicalUrl String?  @db.Text
+  ogImage      String?  @db.Text
   robots       String?  @default("index, follow")
-  customSchema String?  // JSON-LD custom string
+  customSchema String?  @db.LongText // JSON-LD custom string
   isPublished  Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -435,19 +435,19 @@ model Blog {
   id           String        @id @default(cuid())
   title        String
   slug         String        @unique
-  excerpt      String?
-  content      String        // HTML or Markdown
-  featuredImg  String?
+  excerpt      String?       @db.Text
+  content      String        @db.LongText // HTML or Markdown
+  featuredImg  String?       @db.Text
   author       String        @default("Brisbane Carpet & Pest Experts")
   readTime     Int           @default(5)
   categoryId   String?
   category     BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  tags         String?       // Comma-separated or JSON
-  metaTitle    String?
-  metaDesc     String?
-  metaKeywords String?
-  canonicalUrl String?
-  ogImage      String?
+  tags         String?       @db.Text // Comma-separated or JSON
+  metaTitle    String?       @db.Text
+  metaDesc     String?       @db.Text
+  metaKeywords String?       @db.Text
+  canonicalUrl String?       @db.Text
+  ogImage      String?       @db.Text
   status       String        @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
   publishedAt  DateTime      @default(now())
   createdAt    DateTime      @default(now())
@@ -466,8 +466,8 @@ model FaqCategory {
 
 model Faq {
   id         String       @id @default(cuid())
-  question   String
-  answer     String
+  question   String       @db.Text
+  answer     String       @db.LongText
   categoryId String?
   category   FaqCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   serviceTag String?      // Optional tag linking FAQ to a specific service or page
@@ -482,9 +482,9 @@ model Testimonial {
   clientName String
   role       String?  @default("Client")
   location   String?  @default("Brisbane")
-  avatar     String?
+  avatar     String?  @db.Text
   rating     Int      @default(5)
-  review     String
+  review     String   @db.LongText
   source     String?  @default("Google")
   isApproved Boolean  @default(true)
   order      Int      @default(0)
@@ -495,10 +495,10 @@ model Testimonial {
 model Media {
   id        String   @id @default(cuid())
   filename  String
-  url       String
+  url       String   @db.Text
   mimeType  String?
   size      Int?
-  altText   String?
+  altText   String?  @db.Text
   folder    String?  @default("general")
   createdAt DateTime @default(now())
 }
@@ -507,16 +507,16 @@ model EmailLog {
   id        String   @id @default(cuid())
   recipient String
   subject   String
-  body      String?
+  body      String?  @db.LongText
   status    String   @default("SENT") // SENT, FAILED, QUEUED
-  error     String?
+  error     String?  @db.Text
   createdAt DateTime @default(now())
 }
 
 model WhatsappLog {
   id        String   @id @default(cuid())
   phone     String
-  message   String
+  message   String   @db.LongText
   direction String   @default("OUTBOUND") // INBOUND, OUTBOUND
   status    String   @default("SENT") // SENT, DELIVERED, READ, FAILED
   createdAt DateTime @default(now())
@@ -530,16 +530,16 @@ model ActivityLog {
   action     String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, STATUS_CHANGE, APPROVAL, PAYMENT
   module     String   // Services, Bookings, Quotations, Invoices, HRM, Employee, Payments, Settings, Auth
   entityId   String?
-  details    String?  // JSON formatted string with diff or context
+  details    String?  @db.LongText // JSON formatted string with diff or context
   ipAddress  String?
-  userAgent  String?
+  userAgent  String?  @db.Text
   createdAt  DateTime @default(now())
 }
 
 model SiteSetting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String   // JSON or string value
+  value     String   @db.LongText // JSON or string value
   group     String   @default("general") // general, contact, seo, header, footer, booking, social, payment
   label     String?
   createdAt DateTime @default(now())

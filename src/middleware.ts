@@ -7,9 +7,9 @@ const encodedSecret = new TextEncoder().encode(JWT_SECRET);
 export const config = {
   matcher: [
     /*
-     * Match all requests except static files and image optimizations
+     * Match all requests except Next.js internals, static files, and assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|images|assets|icons|font).*)',
+    '/((?!_next|_not-found|favicon.ico|images|assets|icons|font).*)',
   ],
 };
 
